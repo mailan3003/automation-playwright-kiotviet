@@ -1,0 +1,22 @@
+{
+  "validUsers": [
+    {
+      "role": "admin",
+      "email": "replace_with_real_email@example.com",
+      "password": "replace_with_real_password",
+      "description": "Tài khoản admin full quyền"
+    }
+  ],
+  "invalidCredentials": [
+    {
+      "email": "wrong@email.com",
+      "password": "wrong_password",
+      "expectedError": "Sai email hoặc mật khẩu"
+    },
+    {
+      "email": "",
+      "password": "",
+      "expectedError": "Vui lòng nhập email"
+    }
+  ]
+}

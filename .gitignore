@@ -142,3 +142,12 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 .claude/worktrees/
+
+# Playwright outputs
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+
+# Browser binaries
+/browsers

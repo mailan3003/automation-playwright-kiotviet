@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request as playwrightRequest, APIRequestContext } from '@playwright/test';
 import { AuthApiHelper } from '../../../api/helpers/auth-api.helper';
 import { ProductApiHelper } from '../../../api/helpers/product-api.helper';
 import { ProductDataGenerator } from '../../../api/generators/product-data.generator';
@@ -13,14 +13,22 @@ const LOGIN_PASS = process.env.API_PASSWORD ?? 'Kiotviet123456';
 test.describe('API Product - Tạo hàng hóa [POST /api/products/addmany] @api', () => {
   let productApi: ProductApiHelper;
   let authToken: string;
+  let apiContext: APIRequestContext;
 
-  test.beforeAll(async ({ request }) => {
-    const authHelper = new AuthApiHelper(request);
+  test.beforeAll(async () => {
+    // Tạo APIRequestContext thủ công để dùng chung toàn bộ suite
+    apiContext = await playwrightRequest.newContext();
+    const authHelper = new AuthApiHelper(apiContext);
     authToken = await authHelper.login(LOGIN_USER, LOGIN_PASS, API_RETAILER, Number(API_BRANCH_ID));
+    productApi = new ProductApiHelper(apiContext, authToken, API_BRANCH_ID, API_RETAILER, API_GROUP_ID);
   });
 
-  test.beforeEach(({ request }) => {
-    productApi = new ProductApiHelper(request, authToken, API_BRANCH_ID, API_RETAILER, API_GROUP_ID);
+  test.afterAll(async () => {
+    if (productApi.createdIds.length > 0) {
+      const response = await productApi.deleteProducts(productApi.createdIds);
+      console.log(`[Cleanup] Xóa ${productApi.createdIds.length} sản phẩm → HTTP ${response.status()}`);
+    }
+    await apiContext.dispose();
   });
 
   // ===========================================================================

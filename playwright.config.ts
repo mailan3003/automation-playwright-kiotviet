@@ -22,7 +22,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.BASE_URL || 'https://id.kiotviet.vn',
+    baseURL: process.env.BASE_URL || 'https://testz18.kiotviet.vn',
     viewport: { width: 1920, height: 1080 },
     headless: process.env.CI ? true : false,
     screenshot: 'only-on-failure',

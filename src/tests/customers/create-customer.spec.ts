@@ -41,6 +41,12 @@ test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
     await customerPage.openCreateForm();
   });
 
+  // Đóng modal nếu còn mở (VD: TC03 cố ý để mở modal sau khi test lỗi validation)
+  // — tránh che khuất nav bar, làm test kế tiếp không thể navigate.
+  test.afterEach(async () => {
+    await customerPage.closeModalIfOpen();
+  });
+
   // ===== TC01: Happy Path — đầy đủ Tên + SĐT =====
   test('TC01 - Tạo khách hàng thành công với đầy đủ Tên và Số điện thoại', async () => {
     const name = TestDataGenerator.fullName('AUTO_Customer_TC01');

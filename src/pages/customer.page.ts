@@ -13,6 +13,9 @@ export class CustomerPage extends BasePage {
   readonly nameInput = this.modal.locator('[ng-model="customer.Name"]');
   readonly phoneInput = this.modal.locator('[ng-model="customer.ContactNumber"]');
   readonly saveButton = this.modal.locator('a.kv-btn-primary', { hasText: 'Lưu' });
+  // Nút đóng modal (Kendo window) — có nhiều instance ẩn trong DOM cho các modal khác,
+  // dùng :visible để luôn trỏ đúng modal đang hiển thị.
+  readonly closeModalButton = this.page.locator('.k-window-action.k-link:visible');
 
   readonly toastMessage = this.page.locator('.toast-message').first();
 
@@ -68,6 +71,14 @@ export class CustomerPage extends BasePage {
 
   async isModalOpen(): Promise<boolean> {
     return this.isVisible(this.modal);
+  }
+
+  /** Đóng modal nếu đang mở — dùng để dọn state giữa các test, tránh che khuất nav bar. */
+  async closeModalIfOpen(): Promise<void> {
+    if (await this.isModalOpen()) {
+      await this.closeModalButton.click();
+      await expect(this.modal).toBeHidden({ timeout: 10_000 });
+    }
   }
 
   async expectCustomerInList(name: string): Promise<void> {

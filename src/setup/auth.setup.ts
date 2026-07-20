@@ -31,11 +31,11 @@ async function isExistingSessionValid(browser: import('@playwright/test').Browse
 }
 
 setup('tạo/refresh session đăng nhập admin', async ({ page, context, browser, request }) => {
-  // Đăng nhập API 1 lần duy nhất và cache token — các test API khác (add-product, create-customer...)
-  // sẽ tái sử dụng token này thay vì tự login riêng, tránh vượt ngưỡng rate-limit đăng nhập của tài khoản.
-  await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
-
   if (await isExistingSessionValid(browser)) {
+    // Vẫn cần cache token API cho các test API khác dùng — nhưng chỉ gọi SAU khi đã có
+    // browser traffic thật (session hiện tại hợp lệ), tránh bị chặn do request "trần"
+    // đầu tiên từ 1 IP CI runner hoàn toàn mới.
+    await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
     return;
   }
 
@@ -60,4 +60,8 @@ setup('tạo/refresh session đăng nhập admin', async ({ page, context, brows
 
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
   await context.storageState({ path: AUTH_FILE });
+
+  // Login UI (qua browser thật) đã chạy xong ở trên — gọi API login sau cùng để "kế thừa"
+  // trạng thái IP đã được browser traffic làm nóng, tránh bị chặn do request trần đầu tiên.
+  await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
 });

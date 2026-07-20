@@ -34,8 +34,24 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium',
+      name: 'setup',
+      testDir: './src/setup',
+      testMatch: /.*\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Test cho chính chức năng đăng nhập — không dùng storageState vì cần kiểm tra form login thực tế
+      name: 'auth',
+      testDir: './src/tests/auth',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Các test nghiệp vụ khác — tái sử dụng session đã đăng nhập sẵn (auth/admin.json)
+      name: 'chromium',
+      testDir: './src/tests',
+      testIgnore: ['auth/**'],
+      use: { ...devices['Desktop Chrome'], storageState: 'auth/admin.json' },
+      dependencies: ['setup'],
     },
   ],
 });

@@ -151,3 +151,6 @@ allure-report/
 
 # Browser binaries
 /browsers
+
+# Saved login session (storageState) — chứa session token thật, không commit
+/auth

@@ -18,7 +18,13 @@ export class LoginPage extends BasePage {
     await this.page.goto('/man/#/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
     // Chờ Angular AngularJS loading panel ẩn đi (spinner #LoadingPanel)
     await this.page.waitForSelector('#LoadingPanel', { state: 'hidden', timeout: 45_000 });
-    await expect(this.usernameInput).toBeVisible({ timeout: 20_000 });
+    try {
+      await expect(this.usernameInput).toBeVisible({ timeout: 20_000 });
+    } catch {
+      // App đôi khi treo ở màn hình splash lúc load lần đầu — reload để phục hồi
+      await this.page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(this.usernameInput).toBeVisible({ timeout: 30_000 });
+    }
   }
 
   async login(username: string, password: string): Promise<void> {

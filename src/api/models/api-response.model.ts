@@ -38,3 +38,12 @@ export interface ApiErrorResponse {
   Error?: string;
   StatusCode?: number;
 }
+
+export interface CreateCustomerApiResponse {
+  Id: number;
+  Code: string;
+  CreatedDate: string;
+  Message: string;
+  Name: string;
+  ContactNumber: string;
+}

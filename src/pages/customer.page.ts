@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
 import { BasePage } from './base.page';
+import { CreateCustomerApiResponse } from '../api/models/api-response.model';
 
 export class CustomerPage extends BasePage {
   // Locators — verified trên DOM thực tế (testz18.kiotviet.vn/man/#/Customers)
@@ -47,6 +48,17 @@ export class CustomerPage extends BasePage {
 
   async save(): Promise<void> {
     await this.click(this.saveButton);
+  }
+
+  /** Lưu khách hàng và trả về Id vừa tạo (dùng để cleanup qua API sau khi test xong). */
+  async saveAndGetCreatedId(): Promise<number> {
+    const responsePromise = this.page.waitForResponse(
+      res => res.url().endsWith('/api/customers') && res.request().method() === 'POST'
+    );
+    await this.click(this.saveButton);
+    const response = await responsePromise;
+    const body: CreateCustomerApiResponse = await response.json();
+    return body.Id;
   }
 
   async getToastMessage(): Promise<string> {

@@ -1,9 +1,32 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request as playwrightRequest, APIRequestContext } from '@playwright/test';
 import { CustomerPage } from '../../pages/customer.page';
 import { TestDataGenerator } from '../../utils/test-data';
+import { AuthApiHelper } from '../../api/helpers/auth-api.helper';
+import { CustomerApiHelper } from '../../api/helpers/customer-api.helper';
+
+const LOGIN_USER = process.env.ADMIN_EMAIL ?? 'admin';
+const LOGIN_PASS = process.env.ADMIN_PASSWORD ?? 'Kiotviet123456';
 
 test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
   let customerPage: CustomerPage;
+  let customerApi: CustomerApiHelper;
+  let apiContext: APIRequestContext;
+  const createdIds: number[] = [];
+
+  test.beforeAll(async () => {
+    apiContext = await playwrightRequest.newContext();
+    const authHelper = new AuthApiHelper(apiContext);
+    const token = await authHelper.login(LOGIN_USER, LOGIN_PASS);
+    customerApi = new CustomerApiHelper(apiContext, token);
+  });
+
+  test.afterAll(async () => {
+    if (createdIds.length > 0) {
+      const response = await customerApi.deleteCustomers(createdIds);
+      console.log(`[Cleanup] Xóa ${createdIds.length} khách hàng → HTTP ${response.status()}`);
+    }
+    await apiContext.dispose();
+  });
 
   // Session đăng nhập đã được nạp sẵn qua storageState (auth/admin.json, xem src/setup/auth.setup.ts)
   test.beforeEach(async ({ page }) => {
@@ -20,7 +43,7 @@ test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
     const phone = TestDataGenerator.phone();
 
     await customerPage.fillBasicInfo(name, phone);
-    await customerPage.save();
+    createdIds.push(await customerPage.saveAndGetCreatedId());
 
     await customerPage.expectCustomerInList(name);
   });
@@ -30,7 +53,7 @@ test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
     const name = TestDataGenerator.fullName('AUTO_Customer_TC02');
 
     await customerPage.fillBasicInfo(name);
-    await customerPage.save();
+    createdIds.push(await customerPage.saveAndGetCreatedId());
 
     await customerPage.expectCustomerInList(name);
   });
@@ -50,7 +73,7 @@ test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
     const firstName = TestDataGenerator.fullName('AUTO_Customer_TC04_first');
 
     await customerPage.fillBasicInfo(firstName, existingPhone);
-    await customerPage.save();
+    createdIds.push(await customerPage.saveAndGetCreatedId());
     await customerPage.expectCustomerInList(firstName);
 
     await customerPage.openCreateForm();

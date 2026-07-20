@@ -39,7 +39,19 @@ setup('tạo/refresh session đăng nhập admin', async ({ page, context, brows
   await loginPage.login(ADMIN_USER, ADMIN_PASS);
 
   const dashboardPage = new DashboardPage(page);
-  await dashboardPage.waitForLoad();
+  try {
+    await dashboardPage.waitForLoad();
+  } catch (err) {
+    const currentUrl = page.url();
+    const errorVisible = await loginPage.isErrorVisible().catch(() => false);
+    const errorText = errorVisible ? await loginPage.getErrorMessage().catch(() => '') : '';
+    throw new Error(
+      `Không redirect sang Dashboard sau khi login.\n` +
+      `URL hiện tại: ${currentUrl}\n` +
+      `Lỗi hiển thị trên form login: ${errorVisible ? errorText : '(không có)'}\n` +
+      `ADMIN_EMAIL đang dùng: "${ADMIN_USER}"`
+    );
+  }
 
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
   await context.storageState({ path: AUTH_FILE });

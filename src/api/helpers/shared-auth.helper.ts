@@ -3,10 +3,10 @@ import * as path from 'path';
 import { APIRequestContext } from '@playwright/test';
 import { AuthApiHelper } from './auth-api.helper';
 
-// Cache token đăng nhập API dùng chung giữa các test file trong 1 lần chạy CI.
-// Tránh gọi login API nhiều lần liên tiếp cho cùng 1 tài khoản trong thời gian ngắn
-// — hệ thống KiotViet giới hạn tần suất đăng nhập theo tài khoản và sẽ từ chối
-// các lần đăng nhập vượt ngưỡng bằng thông báo "Sai tên đăng nhập hoặc mật khẩu".
+// Cache token API dùng chung giữa các test file trong 1 lần chạy CI.
+// Token được ưu tiên lấy từ localStorage của phiên đăng nhập UI (xem auth.setup.ts) thay vì
+// tự gọi POST /api/account/login trực tiếp — endpoint này bị chặn khi gọi "trần" (không qua
+// browser) từ IP của GitHub Actions runner, trả về nhầm lỗi "Sai tên đăng nhập hoặc mật khẩu".
 const TOKEN_CACHE_FILE = path.join(process.cwd(), 'auth', 'api-token.json');
 const TOKEN_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -28,6 +28,19 @@ function readCache(): TokenCacheStore {
   }
 }
 
+function writeCache(username: string, token: string): void {
+  const store = readCache();
+  store[username] = { token, createdAt: Date.now() };
+  fs.mkdirSync(path.dirname(TOKEN_CACHE_FILE), { recursive: true });
+  fs.writeFileSync(TOKEN_CACHE_FILE, JSON.stringify(store));
+}
+
+// Gọi sau khi UI đã login thành công — lưu token lấy từ localStorage (key "cat") vào cache
+// chung, để các test API tái sử dụng thay vì tự POST /api/account/login (bị chặn trên CI).
+export function cacheApiTokenFromBrowser(username: string, token: string): void {
+  writeCache(username, token);
+}
+
 export async function getSharedApiToken(
   request: APIRequestContext,
   username: string,
@@ -41,12 +54,11 @@ export async function getSharedApiToken(
     return cached.token;
   }
 
+  // Fallback: chỉ dùng khi chưa có token nào được cache từ browser (VD: chạy lẻ 1 spec API
+  // cục bộ, không qua auth.setup.ts). Trên CI, đường này không nên bị gọi tới.
   const authHelper = new AuthApiHelper(request);
   const token = await authHelper.login(username, password, retailer, branchId);
-
-  store[username] = { token, createdAt: Date.now() };
-  fs.mkdirSync(path.dirname(TOKEN_CACHE_FILE), { recursive: true });
-  fs.writeFileSync(TOKEN_CACHE_FILE, JSON.stringify(store));
+  writeCache(username, token);
 
   return token;
 }

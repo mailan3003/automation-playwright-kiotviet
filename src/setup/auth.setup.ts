@@ -3,39 +3,46 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LoginPage } from '../pages/login.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { getSharedApiToken } from '../api/helpers/shared-auth.helper';
+import { cacheApiTokenFromBrowser } from '../api/helpers/shared-auth.helper';
 
 export const AUTH_FILE = path.join(process.cwd(), 'auth', 'admin.json');
 
 const ADMIN_USER = process.env.ADMIN_EMAIL ?? 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD ?? 'Kiotviet123456';
 
-async function isExistingSessionValid(browser: import('@playwright/test').Browser): Promise<boolean> {
-  if (!fs.existsSync(AUTH_FILE)) return false;
+// Angular app lưu JWT hiện hành ở localStorage key "cat" sau khi login UI thành công —
+// giá trị này giống hệt token mà endpoint POST /api/account/login trả về, nên có thể tái sử dụng
+// trực tiếp cho các API test thay vì tự gọi login API riêng (bị chặn khi gọi "trần" từ IP CI runner).
+async function readTokenFromLocalStorage(page: import('@playwright/test').Page): Promise<string | null> {
+  return page.evaluate(() => localStorage.getItem('cat'));
+}
+
+async function isExistingSessionValid(browser: import('@playwright/test').Browser): Promise<string | null> {
+  if (!fs.existsSync(AUTH_FILE)) return null;
 
   const context = await browser.newContext({ storageState: AUTH_FILE });
   const page = await context.newPage();
   try {
     await page.goto('/man/#/DashBoard', { waitUntil: 'domcontentloaded', timeout: 30_000 });
     const loginFormVisible = await page.locator('#UserName').isVisible().catch(() => false);
-    if (loginFormVisible) return false;
+    if (loginFormVisible) return null;
 
     const dashboardPage = new DashboardPage(page);
     await expect(dashboardPage.activeNavItem).toBeVisible({ timeout: 15_000 });
-    return !page.url().includes('/login');
+    if (page.url().includes('/login')) return null;
+
+    return readTokenFromLocalStorage(page);
   } catch {
-    return false;
+    return null;
   } finally {
     await context.close();
   }
 }
 
-setup('tạo/refresh session đăng nhập admin', async ({ page, context, browser, request }) => {
-  if (await isExistingSessionValid(browser)) {
-    // Vẫn cần cache token API cho các test API khác dùng — nhưng chỉ gọi SAU khi đã có
-    // browser traffic thật (session hiện tại hợp lệ), tránh bị chặn do request "trần"
-    // đầu tiên từ 1 IP CI runner hoàn toàn mới.
-    await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
+setup('tạo/refresh session đăng nhập admin', async ({ page, context, browser }) => {
+  const existingToken = await isExistingSessionValid(browser);
+  if (existingToken) {
+    cacheApiTokenFromBrowser(ADMIN_USER, existingToken);
     return;
   }
 
@@ -61,7 +68,8 @@ setup('tạo/refresh session đăng nhập admin', async ({ page, context, brows
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
   await context.storageState({ path: AUTH_FILE });
 
-  // Login UI (qua browser thật) đã chạy xong ở trên — gọi API login sau cùng để "kế thừa"
-  // trạng thái IP đã được browser traffic làm nóng, tránh bị chặn do request trần đầu tiên.
-  await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
+  const token = await readTokenFromLocalStorage(page);
+  if (token) {
+    cacheApiTokenFromBrowser(ADMIN_USER, token);
+  }
 });

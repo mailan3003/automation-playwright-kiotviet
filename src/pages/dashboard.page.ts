@@ -16,6 +16,7 @@ export class DashboardPage extends BasePage {
     // Angular hash-based routing — dùng waitForFunction thay vì waitForURL
     await this.page.waitForFunction(
       () => window.location.href.includes('DashBoard'),
+      undefined,
       { timeout: 25_000 }
     );
     await expect(this.activeNavItem).toBeVisible({ timeout: 10_000 });

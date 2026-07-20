@@ -39,6 +39,7 @@ jobs:
           BASE_URL: ${{ secrets.BASE_URL }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          NEGATIVE_TEST_USER: ${{ secrets.NEGATIVE_TEST_USER }}
           CI: true
         run: |
           if [ -n "${{ github.event.inputs.grep }}" ]; then

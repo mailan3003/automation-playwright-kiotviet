@@ -6,6 +6,10 @@ const BASE_URL = 'https://testz18.kiotviet.vn';
 const VALID_USER = 'admin';
 const VALID_PASS = 'Kiotviet123456';
 
+// Tài khoản riêng cho các case cố tình đăng nhập sai mật khẩu — KHÔNG dùng tài khoản admin chính
+// để tránh bị hệ thống khoá/rate-limit do nhiều lần login sai liên tiếp trong cùng 1 lần chạy CI.
+const NEGATIVE_TEST_USER = process.env.NEGATIVE_TEST_USER || VALID_USER;
+
 test.describe('Module Login - KiotViet Manager @smoke', () => {
   let loginPage: LoginPage;
 
@@ -32,7 +36,7 @@ test.describe('Module Login - KiotViet Manager @smoke', () => {
   // ===== TC02: Sai mật khẩu =====
   test('TC02 - Hiển thị lỗi khi nhập sai mật khẩu', async ({ page }) => {
     const wrongPass = 'WrongPassword_' + Date.now();
-    await loginPage.login(VALID_USER, wrongPass);
+    await loginPage.login(NEGATIVE_TEST_USER, wrongPass);
 
     const errorMsg = await loginPage.getErrorMessage();
     expect(errorMsg).toContain('Sai tên đăng nhập hoặc mật khẩu');
@@ -90,10 +94,10 @@ test.describe('Module Login - KiotViet Manager @smoke', () => {
 // ===== Data-driven: Kiểm tra nhiều bộ credentials không hợp lệ =====
 test.describe('Module Login - Invalid Credentials @regression', () => {
   const invalidCredentials = [
-    { username: 'admin',          password: 'wrongpass123',   desc: 'sai password' },
-    { username: 'wrong_user',     password: VALID_PASS,       desc: 'sai username' },
-    { username: 'Admin',          password: 'KIOTVIET123456', desc: 'sai case' },
-    { username: ' wrong_user ',    password: VALID_PASS,       desc: 'username không tồn tại có khoảng trắng' },
+    { username: NEGATIVE_TEST_USER,               password: 'wrongpass123',   desc: 'sai password' },
+    { username: 'wrong_user',                     password: VALID_PASS,       desc: 'sai username' },
+    { username: NEGATIVE_TEST_USER.toUpperCase(), password: 'KIOTVIET123456', desc: 'sai case' },
+    { username: ' wrong_user ',                   password: VALID_PASS,       desc: 'username không tồn tại có khoảng trắng' },
   ];
 
   for (const cred of invalidCredentials) {

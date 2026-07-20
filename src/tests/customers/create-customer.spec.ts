@@ -1,7 +1,7 @@
 import { test, expect, request as playwrightRequest, APIRequestContext } from '@playwright/test';
 import { CustomerPage } from '../../pages/customer.page';
 import { TestDataGenerator } from '../../utils/test-data';
-import { AuthApiHelper } from '../../api/helpers/auth-api.helper';
+import { getSharedApiToken } from '../../api/helpers/shared-auth.helper';
 import { CustomerApiHelper } from '../../api/helpers/customer-api.helper';
 
 const LOGIN_USER = process.env.ADMIN_EMAIL ?? 'admin';
@@ -9,19 +9,23 @@ const LOGIN_PASS = process.env.ADMIN_PASSWORD ?? 'Kiotviet123456';
 
 test.describe('Module Khách hàng - Tạo mới khách hàng @smoke', () => {
   let customerPage: CustomerPage;
-  let customerApi: CustomerApiHelper;
+  let customerApi: CustomerApiHelper | undefined;
   let apiContext: APIRequestContext;
   const createdIds: number[] = [];
 
   test.beforeAll(async () => {
     apiContext = await playwrightRequest.newContext();
-    const authHelper = new AuthApiHelper(apiContext);
-    const token = await authHelper.login(LOGIN_USER, LOGIN_PASS);
-    customerApi = new CustomerApiHelper(apiContext, token);
+    // Token chỉ phục vụ cleanup ở afterAll — nếu login lỗi, không được chặn các test UI bên dưới.
+    try {
+      const token = await getSharedApiToken(apiContext, LOGIN_USER, LOGIN_PASS);
+      customerApi = new CustomerApiHelper(apiContext, token);
+    } catch (err) {
+      console.warn(`[Cleanup] Bỏ qua — không lấy được API token: ${(err as Error).message}`);
+    }
   });
 
   test.afterAll(async () => {
-    if (createdIds.length > 0) {
+    if (createdIds.length > 0 && customerApi) {
       const response = await customerApi.deleteCustomers(createdIds);
       console.log(`[Cleanup] Xóa ${createdIds.length} khách hàng → HTTP ${response.status()}`);
     }

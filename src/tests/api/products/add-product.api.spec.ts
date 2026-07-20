@@ -1,5 +1,5 @@
 import { test, expect, request as playwrightRequest, APIRequestContext } from '@playwright/test';
-import { AuthApiHelper } from '../../../api/helpers/auth-api.helper';
+import { getSharedApiToken } from '../../../api/helpers/shared-auth.helper';
 import { ProductApiHelper } from '../../../api/helpers/product-api.helper';
 import { ProductDataGenerator } from '../../../api/generators/product-data.generator';
 import { AddProductApiResponse } from '../../../api/models/api-response.model';
@@ -18,8 +18,7 @@ test.describe('API Product - Tạo hàng hóa [POST /api/products/addmany] @api'
   test.beforeAll(async () => {
     // Tạo APIRequestContext thủ công để dùng chung toàn bộ suite
     apiContext = await playwrightRequest.newContext();
-    const authHelper = new AuthApiHelper(apiContext);
-    authToken = await authHelper.login(LOGIN_USER, LOGIN_PASS, API_RETAILER, Number(API_BRANCH_ID));
+    authToken = await getSharedApiToken(apiContext, LOGIN_USER, LOGIN_PASS, API_RETAILER, Number(API_BRANCH_ID));
     productApi = new ProductApiHelper(apiContext, authToken, API_BRANCH_ID, API_RETAILER, API_GROUP_ID);
   });
 

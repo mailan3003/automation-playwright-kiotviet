@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LoginPage } from '../pages/login.page';
 import { DashboardPage } from '../pages/dashboard.page';
+import { getSharedApiToken } from '../api/helpers/shared-auth.helper';
 
 export const AUTH_FILE = path.join(process.cwd(), 'auth', 'admin.json');
 
@@ -29,7 +30,11 @@ async function isExistingSessionValid(browser: import('@playwright/test').Browse
   }
 }
 
-setup('tạo/refresh session đăng nhập admin', async ({ page, context, browser }) => {
+setup('tạo/refresh session đăng nhập admin', async ({ page, context, browser, request }) => {
+  // Đăng nhập API 1 lần duy nhất và cache token — các test API khác (add-product, create-customer...)
+  // sẽ tái sử dụng token này thay vì tự login riêng, tránh vượt ngưỡng rate-limit đăng nhập của tài khoản.
+  await getSharedApiToken(request, ADMIN_USER, ADMIN_PASS);
+
   if (await isExistingSessionValid(browser)) {
     return;
   }

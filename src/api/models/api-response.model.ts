@@ -47,3 +47,20 @@ export interface CreateCustomerApiResponse {
   Name: string;
   ContactNumber: string;
 }
+
+export interface DashboardInvoicesResponse {
+  Total1Value: number;
+  Total2Value: number;
+  Total3Value: number;
+  Total: number;
+  PageSize: number;
+  Timestamp: string;
+}
+
+export interface DashboardApiErrorResponse {
+  ResponseStatus: {
+    ErrorCode: string;
+    Message: string;
+    Errors: unknown[];
+  };
+}

@@ -160,3 +160,27 @@ Dự án này được phân phối dưới giấy phép nguồn mở **[MIT Lic
 ---
 Anh Tester Automation Testing 🎯
 https://anhtester.com
+
+---
+Tổng hợp câu lệnh Allure Report
+Cách nhanh nhất — chạy hết trong 1 lệnh (chạy test → gen report → tự mở browser):
+
+
+npm run test:report
+pretest sẽ tự xoá allure-results cũ trước khi chạy, nên report luôn chỉ chứa kết quả lần chạy mới nhất.
+
+Hoặc làm từng bước riêng (khi muốn kiểm soát/chạy test riêng lẻ):
+
+Bước	Lệnh	Mục đích
+1	npm run test (hoặc npx playwright test <file>)	Chạy test, ghi kết quả vào allure-results
+2a	npm run allure:generate	Gen report dạng nhiều file → xem qua server
+2b	npm run allure:generate:html	Gen report dạng 1 file HTML duy nhất → double-click mở trực tiếp
+3	npm run allure:open	Mở server local + browser để xem report (chỉ dùng với 2a)
+Lệnh phụ:
+
+
+npm run allure:serve   # gộp generate + open trong 1 bước, không lưu report ra thư mục
+Lưu ý:
+
+Nếu double-click file index.html để mở → phải dùng bản allure:generate:html (single-file), bản thường (allure:generate) bắt buộc phải mở qua allure:open/allure:serve vì chặn CORS khi mở bằng file://.
+allure:generate* đều có --clean nên allure-report/ luôn bị ghi đè bằng report mới nhất, không tích file cũ.

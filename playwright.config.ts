@@ -46,10 +46,17 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      // Test API thuần — chỉ dùng APIRequestContext (fixture `request`), không cần browser/storageState.
+      // Token lấy qua getSharedApiToken() (cache từ setup nếu có, hoặc tự login qua HTTP nếu chưa có) —
+      // vì vậy KHÔNG khai báo dependencies: ['setup'] để tránh mở browser không cần thiết.
+      name: 'api',
+      testDir: './src/tests/api',
+    },
+    {
       // Các test nghiệp vụ khác — tái sử dụng session đã đăng nhập sẵn (auth/admin.json)
       name: 'chromium',
       testDir: './src/tests',
-      testIgnore: ['auth/**'],
+      testIgnore: ['auth/**', 'api/**'],
       use: { ...devices['Desktop Chrome'], storageState: 'auth/admin.json' },
       dependencies: ['setup'],
     },

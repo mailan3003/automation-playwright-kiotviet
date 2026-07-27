@@ -26,15 +26,25 @@ export class CustomerPage extends BasePage {
   async navigate(): Promise<void> {
     // Điều hướng qua menu thật (hover mở dropdown, sau đó click link con "Khách hàng")
     // thay vì page.goto trực tiếp với hash — goto trực tiếp bị AngularJS router reset về route mặc định ngay sau khi login.
-    try {
-      await this.customersNavTab.hover({ timeout: 15_000 });
-    } catch {
-      // Angular đôi khi chưa kịp render nav bar ngay sau khi trang vừa load — reload để phục hồi
-      await this.page.reload({ waitUntil: 'domcontentloaded' });
-      await this.customersNavTab.hover({ timeout: 20_000 });
+    // Dropdown dựa trên CSS :hover — trên CI, menu có thể tự đóng lại giữa lúc hover xong và lúc
+    // Playwright thực hiện click (độ trễ render khác máy local), nên cần verify dropdown còn hiển thị
+    // trước khi click, và hover lại nếu không (tối đa 3 lần thay vì chỉ retry-reload 1 lần).
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) {
+          await this.page.reload({ waitUntil: 'domcontentloaded' });
+        }
+        await this.customersNavTab.hover({ timeout: 20_000 });
+        await expect(this.customersDropdownLink).toBeVisible({ timeout: 5_000 });
+        await this.click(this.customersDropdownLink);
+        await expect(this.pageHeading).toBeVisible({ timeout: 20_000 });
+        return;
+      } catch (err) {
+        lastError = err;
+      }
     }
-    await this.click(this.customersDropdownLink);
-    await expect(this.pageHeading).toBeVisible({ timeout: 20_000 });
+    throw lastError;
   }
 
   async openCreateForm(): Promise<void> {

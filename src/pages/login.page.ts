@@ -14,17 +14,28 @@ export class LoginPage extends BasePage {
     super(page);
   }
 
+  /**
+   * Retry toàn bộ navigation (không chỉ reload) — mạng cục bộ đôi khi đứt/đổi interface giữa chừng
+   * (net::ERR_NETWORK_CHANGED) khiến goto/reload cùng fail; một goto mới từ đầu phục hồi tốt hơn
+   * là reload trên một page có thể đang ở trạng thái network lỗi dở dang.
+   */
   async navigate(): Promise<void> {
-    await this.page.goto('/man/#/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    // Chờ Angular AngularJS loading panel ẩn đi (spinner #LoadingPanel)
-    await this.page.waitForSelector('#LoadingPanel', { state: 'hidden', timeout: 45_000 });
-    try {
-      await expect(this.usernameInput).toBeVisible({ timeout: 20_000 });
-    } catch {
-      // App đôi khi treo ở màn hình splash lúc load lần đầu — reload để phục hồi
-      await this.page.reload({ waitUntil: 'domcontentloaded' });
-      await expect(this.usernameInput).toBeVisible({ timeout: 30_000 });
+    const maxAttempts = 3;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.page.goto('/man/#/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        // Chờ Angular AngularJS loading panel ẩn đi (spinner #LoadingPanel)
+        await this.page.waitForSelector('#LoadingPanel', { state: 'hidden', timeout: 30_000 });
+        await expect(this.usernameInput).toBeVisible({ timeout: 15_000 });
+        return;
+      } catch (err) {
+        lastError = err;
+      }
     }
+
+    throw lastError;
   }
 
   async login(username: string, password: string): Promise<void> {

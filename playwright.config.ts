@@ -34,9 +34,13 @@ export default defineConfig({
 
   projects: [
     {
+      // Timeout riêng cao hơn mặc định (60s) — app staging đôi khi kẹt ở splash AngularJS lúc
+      // load lần đầu, và mạng cục bộ đôi khi đứt/đổi interface giữa chừng (ERR_NETWORK_CHANGED),
+      // nên LoginPage.navigate() có retry 3 lần — cần đủ ngân sách cho worst-case cả 3 lần.
       name: 'setup',
       testDir: './src/setup',
       testMatch: /.*\.setup\.ts/,
+      timeout: 300_000,
       use: { ...devices['Desktop Chrome'] },
     },
     {

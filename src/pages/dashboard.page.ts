@@ -18,8 +18,12 @@ export class DashboardPage extends BasePage {
   readonly tabByHour = this.page.locator('#hour');
   readonly tabByWeekday = this.page.locator('#day');
 
-  // Card "Top 10 hàng bán chạy"
+  // Card "Top 10 hàng bán chạy" — Kendo chart render bằng SVG thuần (không phải table),
+  // nên không có row/tr; mỗi sản phẩm là 1 cặp <text> (tên SP màu #677484 + giá trị màu #3E464F).
+  // Verify trực tiếp trên DOM thật qua Playwright (reportapi/charts/product response).
+  readonly topProductCard = this.page.locator('.kv-card', { has: this.page.locator('#topProductTitle') });
   readonly topProductTitle = this.page.locator('#topProductTitle');
+  readonly topProductChartLabels = this.topProductCard.locator('svg text[fill="#677484"]');
   readonly topProductTypeDropdownTrigger = this.page.locator('[aria-owns="topProductType_listbox"]');
   readonly topProductTypeDropdownLabel = this.topProductTypeDropdownTrigger.locator('.k-input');
   readonly topProductTypeListbox = this.page.locator('#topProductType_listbox');
@@ -29,6 +33,13 @@ export class DashboardPage extends BasePage {
   readonly topCustomersEmptyState = this.topCustomersCard.getByText('Chưa có dữ liệu');
 
   readonly recentActivitiesTitle = this.page.locator('.kv-dashboard-list-recents-title');
+
+  // Card "Kết quả bán hàng hôm nay" — verify DOM thực tế: khi /api/invoices/dashboard trả lỗi,
+  // KHÔNG có error message/toast nào hiển thị — field "Doanh thu" chỉ render rỗng (AngularJS
+  // binding không có fallback), không phải "0" và không phải trắng toàn trang.
+  readonly todaySalesRevenueValue = this.page
+    .locator('.kv-dashboard-statistical-item-total .kv-dashboard-statistical-item-content .ng-binding')
+    .first();
 
   constructor(page: Page) {
     super(page);
@@ -41,7 +52,9 @@ export class DashboardPage extends BasePage {
       undefined,
       { timeout: 25_000 }
     );
-    await expect(this.activeNavItem).toBeVisible({ timeout: 10_000 });
+    // Splash bootstrap của app staging đôi khi vượt 10s (cùng nguyên nhân với retry-reload ở
+    // LoginPage.navigate()) — nới timeout để tránh fail giả do môi trường, không phải do UI lỗi.
+    await expect(this.activeNavItem).toBeVisible({ timeout: 20_000 });
   }
 
   async isDisplayed(): Promise<boolean> {
@@ -114,6 +127,11 @@ export class DashboardPage extends BasePage {
 
   async getTopProductTypeLabel(): Promise<string> {
     return this.getText(this.topProductTypeDropdownLabel);
+  }
+
+  /** Số lượng sản phẩm đang hiển thị trên chart "Top 10 hàng bán chạy" (đếm theo số label tên SP). */
+  async getTopProductCount(): Promise<number> {
+    return this.topProductChartLabels.count();
   }
 
   /**

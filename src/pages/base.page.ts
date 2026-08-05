@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 
 export class BasePage {
-  private static readonly pagesWithPopupHandler = new WeakSet<Page>();
+  private static readonly bannerStyleInjected = new WeakMap<Page, Promise<void>>();
 
   constructor(protected readonly page: Page) {
     BasePage.registerBlockingPopupHandlers(page);
@@ -16,11 +16,16 @@ export class BasePage {
    * 2. Thông báo thật của app (Kendo `.k-window-alert`) báo lệch múi giờ giữa chi nhánh và thiết bị —
    *    chỉ xuất hiện khi timezone máy chạy browser khác múi giờ cấu hình cho chi nhánh (ví dụ CI chạy
    *    UTC). Không phải bug, chỉ là khác biệt môi trường, nên tự đóng bằng nút "Đã hiểu".
+   * 3. Banner thông báo đổi tên miền (`#kma-warning-banner`, widget Vue, `ng-show="isKiotvietOnline()<=0"`)
+   *    — hiển thị LIÊN TỤC (không phải popup tạm thời) khi app coi phiên là "offline", che phủ toàn bộ
+   *    layout và intercept pointer event ở bất kỳ toạ độ nào. Không có nút đóng. AngularJS's ng-show
+   *    tự set lại inline style `display` mỗi vòng $digest nên ẩn 1 lần qua addLocatorHandler bị ghi đè
+   *    lại gần như ngay lập tức (flaky). Phải chèn CSS `!important` qua addInitScript — thắng cả inline
+   *    style, chạy lại ở MỌI lần navigate nên không bị mất khi Angular điều hướng route.
    * Đăng ký 1 lần cho mỗi `page` — addLocatorHandler báo lỗi nếu đăng ký trùng cùng locator.
    */
   private static registerBlockingPopupHandlers(page: Page): void {
-    if (BasePage.pagesWithPopupHandler.has(page)) return;
-    BasePage.pagesWithPopupHandler.add(page);
+    if (BasePage.bannerStyleInjected.has(page)) return;
 
     // Widget ktarget có thể hiện nhiều popup dạng vodal cùng lúc (ví dụ báo "thành công" + popup
     // quảng cáo dịch vụ) — addLocatorHandler yêu cầu locator resolve đúng 1 phần tử, nên dùng .first();
@@ -35,6 +40,22 @@ export class BasePage {
         await locator.click();
       }
     );
+
+    const injectBannerKillStyle = (): void => {
+      const style = document.createElement('style');
+      style.textContent =
+        '#kma-warning-banner { display: none !important; pointer-events: none !important; }';
+      (document.head ?? document.documentElement).appendChild(style);
+    };
+    // addInitScript chỉ chạy ở các lần navigate/reload TIẾP THEO, không hồi tố cho document đã load —
+    // nên cần evaluate ngay 1 lần cho trang hiện tại. Lưu lại Promise (thay vì fire-and-forget) để
+    // click()/fill() có thể await trước khi thao tác — tránh race lúc trang vừa load xong.
+    void page.addInitScript(injectBannerKillStyle);
+    BasePage.bannerStyleInjected.set(page, page.evaluate(injectBannerKillStyle).catch(() => undefined));
+  }
+
+  private async ensureBannerHidden(): Promise<void> {
+    await BasePage.bannerStyleInjected.get(this.page);
   }
 
   async navigate(path = ''): Promise<void> {
@@ -43,11 +64,13 @@ export class BasePage {
   }
 
   async click(locator: Locator): Promise<void> {
+    await this.ensureBannerHidden();
     await expect(locator).toBeEnabled();
     await locator.click();
   }
 
   async fill(locator: Locator, value: string): Promise<void> {
+    await this.ensureBannerHidden();
     await expect(locator).toBeVisible();
     await locator.clear();
     await locator.fill(value);

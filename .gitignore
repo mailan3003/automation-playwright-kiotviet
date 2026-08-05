@@ -148,6 +148,7 @@ playwright-report/
 test-results/
 allure-results/
 allure-report/
+.playwright-mcp/
 
 # Browser binaries
 /browsers
